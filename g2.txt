@@ -1,0 +1,6 @@
+Enter the company name: salesforce-salesforce-sales-cloud
+Enter the start date (YYYY-MM-DD): 2011-01-01
+Enter the end date (YYYY-MM-DD): 2025-01-01
+Enter the source (G2/Capterra): G2
+
+Result in: reviews_g2.json
