@@ -38,30 +38,46 @@ def get_product_id(company_name):
 
 def scrape_g2_reviews(company_slug, start_date, end_date):
     url = f"https://www.g2.com/products/{company_slug}/reviews#reviews"
+    USER_AGENTS = [
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/91.0.4472.124",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/90.0.4430.212",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/88.0.4324.150"
+    ]
     reviews =[]
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
+        page.set_extra_http_headers({"User-Agent": random.choice(USER_AGENTS)})
         page.goto(url)
+        time.sleep(10)  
         page.wait_for_load_state("networkidle")
+        time.sleep(10)  
+        for _ in range(random.randint(3, 6)):  
+            page.mouse.wheel(0, random.randint(500, 1000)) 
+            time.sleep(random.uniform(5, 10))  
+
+        time.sleep(10)  
+        
         page.wait_for_selector(".nested-ajax-loading", timeout=10000)
-        reviews = page.query_selector_all(".paper.paper--white.paper--box.mb-2.position-relative.border-bottom ")
-        for review in reviews:
+        reviews_ele = page.query_selector_all(".paper.paper--white.paper--box.mb-2.position-relative.border-bottom ")
+        for review in reviews_ele:
             title = review.query_selector("div.m-0.l2[itemprop='name']").inner_text().strip() if review.query_selector("div.m-0.l2[itemprop='name']") else "No Title"
             description = review.query_selector("p.formatted-text").inner_text().strip() if review.query_selector("p.formatted-text") else "No Description"
             date_element = review.query_selector("div.time-stamp.pl-4th.ws-nw meta[itemprop='datePublished']")
             date = date_element.get_attribute("content") if date_element else "Unknown Date"
             reviewer_name = review.query_selector("div.flex.ai-c a.link--header-color").inner_text().strip() if review.query_selector("div.flex.ai-c a.link--header-color") else "Anonymous"
             print(title, description, parser.parse(date), reviewer_name,"alkn")
-            if start_date <= parser.parse(date) <= end_date:
-                reviews.append({
-                            "title": title,
-                            "description": description,
-                            "date": parser.parse(date),
-                            "reviewer_name": reviewer_name,
-                })
+
+            reviews.append({
+                "title": title,
+                "description": description,
+                "date": parser.parse(date).strftime("%Y-%m-%d"),
+                "reviewer_name": reviewer_name,
+            })
         browser.close()
     return reviews
+    
 def scrape_capterra_reviews(company_name, start_date, end_date):
     product_url = get_product_id(company_name)
     if not product_url:
@@ -116,17 +132,18 @@ def main():
     source = input("Enter the source (G2/Capterra): ").lower()
 
     if source == "g2":
-        company_slug = company_name.lower().replace(" ", "-")
-        reviews = scrape_g2_reviews(company_slug, start_date, end_date)
+        reviews = scrape_g2_reviews(company_name, start_date, end_date)
+        print(reviews,"reviews")
         save_to_json(reviews, "reviews_g2.json")
     elif source == "capterra":
         reviews = scrape_capterra_reviews(company_name, start_date, end_date)
+        print(reviews,"reviews")
         save_to_json(reviews, "reviews_capterra.json")
     else:
         print("Invalid source! Choose either 'G2' or 'Capterra'.")
         return
 
-    print(f"✅ Scraped {len(reviews)} reviews from {source.capitalize()} for {company_name}.")
+    print(f"Scraped {len(reviews)} reviews from {source.capitalize()} for {company_name}.")
 
 if __name__ == "__main__":
     main()
